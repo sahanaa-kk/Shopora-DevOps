@@ -1,0 +1,47 @@
+﻿name: Shopora CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Validate backend JavaScript
+        working-directory: backend
+        run: |
+          node --check server.js
+          node --check routes/products.js
+          node --check routes/orders.js
+          node --check routes/admin.js
+          node --check middleware/adminAuth.js
+          node --check utils/email.js
+          node --check models/Product.js
+          node --check models/Order.js
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
