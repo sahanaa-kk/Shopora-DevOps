@@ -1,4 +1,4 @@
-﻿name: Shopora CI Pipeline
+name: Shopora CI Pipeline
 
 on:
   push:
@@ -8,6 +8,10 @@ on:
     branches:
       - main
   workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
 
 jobs:
   build-and-validate:
@@ -45,3 +49,40 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         run: npm run build
+
+  docker-publish:
+    needs: build-and-validate
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ghcr.io/sahanaa-kk/shopora-backend:latest
+            ghcr.io/sahanaa-kk/shopora-backend:${{ github.sha }}
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ghcr.io/sahanaa-kk/shopora-frontend:latest
+            ghcr.io/sahanaa-kk/shopora-frontend:${{ github.sha }}
